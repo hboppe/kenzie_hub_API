@@ -8,32 +8,24 @@ export class UsersService {
   constructor(private usersRepository: UserRepository) {}
 
   async create(userData: CreateUserDTO) {
-    const newUser = this.usersRepository.create(userData)
-
-    return newUser
+    return this.usersRepository.create(userData)
   }
 
   async findAll() {
-    const allUsers = this.usersRepository.findAll()
-
-    return allUsers
+    return this.usersRepository.findAll()
   }
 
-  async findOne(userId: string) {
-    const user = this.usersRepository.findOne(userId)
-
-    return user
+  async findOne(id: string) {
+    return this.usersRepository.findOne(id)
   }
 
-  async update(userId: string, updatedData: UpdateUserDTO) {
-    const updatedUser = this.usersRepository.update(userId, updatedData)
-
-    return updatedUser
+  async update(id: string, updatedData: UpdateUserDTO) {
+    return this.usersRepository.update(id, updatedData)
   }
 
-  async delete(userId: string) {
-    this.usersRepository.delete(userId)
-    return;
+  async delete(id: string) {
+    return this.usersRepository.delete(id)
+
   }
 
 }
