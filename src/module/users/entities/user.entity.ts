@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto"
-// this is the entity Prisma will create soon
+
 export class User {
   readonly id: string
   name: string
