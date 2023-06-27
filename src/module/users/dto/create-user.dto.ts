@@ -1,5 +1,4 @@
-import {IsEmail, IsNotEmpty, IsNumberString, IsOptional, IsPhoneNumber, IsString, IsStrongPassword, MinLength, Validate} from 'class-validator'
-import { DoesItMatchPasswordConstraint } from '../validators/matches-password.validator'
+import {IsEmail, IsNotEmpty, IsNumberString, IsOptional, IsPhoneNumber, IsString, IsStrongPassword, MinLength} from 'class-validator'
 
 export class CreateUserDTO{
   @IsNotEmpty()
@@ -14,10 +13,6 @@ export class CreateUserDTO{
   @IsNotEmpty()
   @IsStrongPassword()
   password: string
-
-  @IsNotEmpty()
-  @Validate(DoesItMatchPasswordConstraint)
-  confPassword: string
 
   @IsOptional()
   @IsString()
