@@ -5,6 +5,8 @@ import { UserRepository } from '../users.repository';
 import * as path from 'path';
 import * as fs from 'fs/promises'
 import { Injectable } from '@nestjs/common';
+import { plainToInstance } from 'class-transformer';
+import { promises } from 'dns';
 
 @Injectable()
 export class UserRepositoryInMemory implements UserRepository {
@@ -24,22 +26,23 @@ export class UserRepositoryInMemory implements UserRepository {
   }
 
   create(userData: CreateUserDTO): User | Promise<User> {
-    const newUser = new User()
+    const newUser: User = new User()
     Object.assign(newUser, {...userData})
 
     if(Array.isArray(this.dataBase["users"])) this.dataBase["users"].push(newUser)
     else this.dataBase["users"] = [newUser]
     this.persist()
-    return newUser
+    return plainToInstance(User, newUser)
   }
 
-  findAll(): User[] | Promise<User[]> | [] {
-    return this.dataBase["users"] || []
+  findAll(): User[] | Promise<User[]> {
+    const users: User[] = this.dataBase["users"] || []
+    return plainToInstance(User, users)
   }
 
   findOne(id: string): User | Promise<User> {
-    const user = this.dataBase["users"].find(user => user.id === id)
-    return user
+    const user: User = this.dataBase["users"].find(user => user.id === id)
+    return plainToInstance(User, user)
   }
 
   update(id: string, updatedData: UpdateUserDTO): User | Promise<User> {
@@ -47,7 +50,13 @@ export class UserRepositoryInMemory implements UserRepository {
     const updatedUser = Object.assign(this.dataBase["users"][userIndex], updatedData)
     this.persist()
 
-    return updatedUser
+    return plainToInstance(User, updatedUser)
+  }
+
+  findByEmail(email: string): User | Promise<User> | undefined{
+      const user: User | undefined = this.dataBase["users"].find(user => user.email === email)
+
+      return user
   }
 
   delete(userId: string): void | Promise<void> {
