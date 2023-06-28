@@ -1,9 +1,10 @@
-import { Controller, Post, Get, Param, Put, Body, Delete, HttpCode, Patch } from '@nestjs/common';
+import { Controller, Post, Get, Param, Put, Body, Delete, HttpCode, Patch, UseInterceptors, ClassSerializerInterceptor, ParseUUIDPipe } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDTO } from './dto/create-user.dto';
 import { UpdateUserDTO } from './dto/update-user.dto';
 
 @Controller('users')
+@UseInterceptors(ClassSerializerInterceptor)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
@@ -18,12 +19,12 @@ export class UsersController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string){
+  findOne(@Param('id', ParseUUIDPipe) id: string){
     return this.usersService.findOne(id)
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updatedData: UpdateUserDTO){
+  update(@Param('id', ParseUUIDPipe) id: string, @Body() updatedData: UpdateUserDTO){
     return this.usersService.update(id, updatedData)
   }
 
