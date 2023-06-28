@@ -1,4 +1,7 @@
+import { Transform } from 'class-transformer'
 import {IsEmail, IsNotEmpty, IsNumberString, IsOptional, IsPhoneNumber, IsString, IsStrongPassword, MinLength} from 'class-validator'
+import { hashSync } from 'bcryptjs';
+
 
 export class CreateUserDTO{
   @IsNotEmpty()
@@ -12,6 +15,9 @@ export class CreateUserDTO{
 
   @IsNotEmpty()
   @IsStrongPassword()
+  @Transform(({ value }: { value: string }) => hashSync(value, 10), {
+    groups: ['transform']
+  })
   password: string
 
   @IsOptional()
