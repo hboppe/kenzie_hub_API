@@ -16,7 +16,7 @@ export class UsersService {
     return this.usersRepository.create(userData)
   }
 
-  async findAll() {
+  async findAll(): Promise<User[]> {
     return this.usersRepository.findAll()
   }
 
@@ -41,6 +41,12 @@ export class UsersService {
     if(!existingUser) throw new BadRequestException('User not found')
 
     return this.usersRepository.delete(id)
+  }
+
+  async findByEmail(email: string): Promise<User> {
+    const existingUser: User = await this.usersRepository.findByEmail(email)
+
+    return existingUser
   }
 
 }
