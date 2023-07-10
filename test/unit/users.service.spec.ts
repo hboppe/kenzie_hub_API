@@ -2,18 +2,19 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { UsersService } from '../../src/modules/users/users.service';
 import { UserRepository } from '../../src/modules/users/repositories/users.repository';
 import { CreateUserDTO } from '../../src/modules/users/dto/create-user.dto';
-import { BadRequestException, ConflictException } from '@nestjs/common';
+import { BadRequestException, ConflictException, InternalServerErrorException } from '@nestjs/common';
 import { User } from '../../src/modules/users/entities/user.entity';
 import { plainToInstance } from 'class-transformer';
 import { UpdateUserDTO } from '../../src/modules/users/dto/update-user.dto';
 
 describe('UsersService', () => {
   let service: UsersService;
-  let userRepository: UserRepository
+  let repository: UserRepository
   let users: User[]
-  let createUserMissingFields: CreateUserDTO
-  let createUserValidInfos: CreateUserDTO
+  let invalidCreateUserMock: CreateUserDTO
+  let validCreateUserMock: CreateUserDTO
   let updateUser: UpdateUserDTO
+  let invalidUserIdMock: string
 
   beforeEach(async () => {
 
@@ -38,14 +39,14 @@ describe('UsersService', () => {
       }
     ]
 
-    createUserMissingFields = {
+    invalidCreateUserMock = {
       name: 'Hanna',
       email: 'haha@email.com',
       password: 'senha@E123',
       bio: 'bio aqui'
     } as CreateUserDTO
 
-    createUserValidInfos = {
+    validCreateUserMock = {
       name: 'Hanna',
       email: 'novoemail33dd@email.com',
       password: 'senha@E123',
@@ -59,36 +60,15 @@ describe('UsersService', () => {
       bio: 'new bio'
     }
 
+    invalidUserIdMock = 'bsdckjsvhjk22'
+
     const userRepositoryMock = {
-      findByEmail: jest.fn().mockImplementation((email:string) => null),
-      create: jest.fn().mockImplementation((userInfo) => {
-        
-        const newUser = new User();
-        Object.assign(newUser, userInfo)
-
-        return plainToInstance(User, newUser)
-      }),
-      findAll: jest.fn().mockImplementation(() => {
-
-        return plainToInstance(User, users)
-      }),
-      findOne: jest.fn().mockImplementation((id: string) => {
-        const user = users.find((user) => user.id === id)
-
-        return user ? plainToInstance(User, user) : null
-      }),
-      update: jest.fn().mockImplementation((id: string, updateUserData: UpdateUserDTO) => {
-        const findUser = users.find(user => user.id === id);
-        Object.assign(findUser, updateUserData)
-
-        return plainToInstance(User, findUser)
-      }),
-      delete: jest.fn().mockImplementation((id: string) => {
-        const userIndex = users.findIndex((user) => user.id === id)
-
-        users.splice(userIndex, 1)
-        return
-      })
+      findByEmail: jest.fn(),
+      create: jest.fn(),
+      findAll: jest.fn(),
+      findOne: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn()
     } 
 
     const module: TestingModule = await Test.createTestingModule({
@@ -96,7 +76,7 @@ describe('UsersService', () => {
     }).compile();
 
     service = module.get<UsersService>(UsersService);
-    userRepository = module.get<UserRepository>(UserRepository)
+    repository = module.get<UserRepository>(UserRepository)
   });
 
   it('should be defined', async () => {
@@ -105,96 +85,104 @@ describe('UsersService', () => {
 
   describe('Create user', () => {
 
-
     it('should throw ConflictException if email already exists', async () => {
 
-      (userRepository.findByEmail as jest.Mock).mockResolvedValue(createUserValidInfos.email)
+      (repository.findByEmail as jest.Mock).mockResolvedValue(validCreateUserMock.email)
 
-      await expect(service.create(createUserValidInfos)).rejects.toThrow(
+      await expect(service.create(validCreateUserMock)).rejects.toThrow(
         new ConflictException('Email already exists'),
       )
-
-      expect(userRepository.findByEmail).toBeCalledWith(createUserValidInfos.email)
+      expect(repository.findByEmail).toBeCalledWith(validCreateUserMock.email)
     })
 
-    it('should return user if called with valid params', async () => {
+    it('should return when repository returns', async () => {
 
-      const newUser = await service.create(createUserValidInfos)
+      (repository.create as jest.Mock).mockReturnValue(validCreateUserMock)
 
-      expect(userRepository.findByEmail).toBeCalled()
-      expect(userRepository.create).toBeCalledWith(createUserValidInfos)
-      expect(newUser).not.toHaveProperty('password')
-      expect(newUser).toHaveProperty('id')
-      expect(newUser).toHaveProperty('name')
-      expect(newUser).toHaveProperty('email')
-      expect(newUser).toHaveProperty('bio')
-      expect(newUser).toHaveProperty('contact')
+      await expect(service.create(validCreateUserMock)).resolves.toBe(validCreateUserMock)
+      expect(repository.findByEmail).toBeCalledWith(validCreateUserMock.email)
+      expect(repository.create).toBeCalledWith(validCreateUserMock)
+    })
 
+    it('should throw Error if repository throws', async () => {
+
+      (repository.create as jest.Mock).mockRejectedValue(
+        new InternalServerErrorException()
+      )
+
+      expect(service.create(validCreateUserMock)).rejects.toThrow(
+        new InternalServerErrorException()
+      )
     })
   })
 
   describe('Retrieve All users', () => {
-    it('should return an array of users', async () => {
-      const users = await service.findAll()
 
-      expect(userRepository.findAll).toBeCalled()
-      expect(Array.isArray(users)).toBe(true)
+    it('should return if repository returns', async () => {
+      (repository.findAll as jest.Mock).mockReturnValue(users)
+      const allUsers = await service.findAll()
+
+      expect(await service.findAll()).toBe(users)
+      expect(repository.findAll).toBeCalled()
     })
 
-    it('should not return users password', async () => {
-      const users = await service.findAll()
+    it('should throw Error if repository throws', async () => {
 
-      expect(users[0]).not.toHaveProperty('password')
+      (repository.findAll as jest.Mock).mockRejectedValue(
+        new InternalServerErrorException()
+      )
+
+      expect(service.findAll()).rejects.toThrow(
+        new InternalServerErrorException()
+      )
     })
-
+    
   })
 
   describe('Retrieve one user by id', () => {
 
     it('should throw BadRequestException if user not found', async () => {
 
-     await expect(service.findOne('gj5')).rejects.toThrow(
+      (repository.findOne as jest.Mock).mockReturnValue(null)
+      
+      await expect(service.findOne(invalidUserIdMock)).rejects.toThrow(
       new BadRequestException('User not found')
      )
-     expect(userRepository.findOne).toBeCalled()
-     expect(userRepository.findOne).toBeCalledWith('gj5')
+     expect(repository.findOne).toBeCalledWith(invalidUserIdMock)
     })
     
-    it('should return a user if a valid id is passed as argument', async () => {
-      const user = await service.findOne(users[0].id)
+    it('should return if repository returns', async () => {
 
-      expect(userRepository.findOne).toBeCalled()
-      expect(user).not.toHaveProperty('password')
-      expect(user).toHaveProperty('id')
-      expect(user).toHaveProperty('name')
-      expect(user).toHaveProperty('email')
-      expect(user).toHaveProperty('module')
-      expect(user).toHaveProperty('bio')
-      expect(user).toHaveProperty('contact')
+      (repository.findOne as jest.Mock).mockReturnValue({user: 'VALID-USER'})
+
+      expect(await service.findOne('valid-id')).toStrictEqual({user: 'VALID-USER'})
+      expect(repository.findOne).toBeCalledWith('valid-id')
+
 
     })
   })
 
   describe('Update User', () => {
+
     it('should throw BadRequestException if user id is invalid', async () => {
 
-      await expect(service.update('gj5', updateUser)).rejects.toThrow(
+      (repository.findOne as jest.Mock).mockReturnValue(null)
+
+      await expect(service.update(invalidUserIdMock, updateUser)).rejects.toThrow(
         new BadRequestException('User not found')
       )
-      expect(userRepository.findOne).toBeCalled()
+      expect(repository.findOne).toBeCalledWith(invalidUserIdMock)
     })
 
-    it('should return user if id and updateUserInfo are valid', async () => {
-      const user = await service.update(users[1].id,updateUser)
+    it('should return if repository return', async () => {
+      (repository.findOne as jest.Mock).mockReturnValue('VALID-ID');
 
-      expect(userRepository.findOne).toBeCalled()
-      expect(userRepository.update).toBeCalledWith(users[1].id, updateUser)
-      expect(user).toHaveProperty('id')
-      expect(user).toHaveProperty('name', updateUser.name)
-      expect(user).toHaveProperty('email')
-      expect(user).toHaveProperty('bio', updateUser.bio)
-      expect(user).toHaveProperty('contact')
-      expect(user).not.toHaveProperty('password')
+      (repository.update as jest.Mock).mockReturnValue({user: 'UPDATED-USER'})
+
+      await expect(service.update('VALID-ID', updateUser)).resolves.toStrictEqual({user: 'UPDATED-USER'})
+      expect(repository.findOne).toBeCalledWith('VALID-ID')
+      expect(repository.update).toBeCalledWith('VALID-ID', updateUser)
+
     })
   })
 
@@ -202,19 +190,20 @@ describe('UsersService', () => {
 
     it('should throw BadRequestException if user not found', async () => {
 
-      await expect(service.delete('gj5')).rejects.toThrow(
+      await expect(service.delete(invalidUserIdMock)).rejects.toThrow(
         new BadRequestException('User not found')
       )
-      expect(userRepository.findOne).toBeCalled()
+      expect(repository.findOne).toBeCalledWith(invalidUserIdMock)
     })
 
-    it('should delete user if id is valid', async () => {
+    it('should returns if repository returns', async () => {
 
-      const userToDelete = users[1]
-
-      await expect(service.delete(users[1].id)).resolves.toBeUndefined()
-      expect(users.find(user => user.id === userToDelete.id)).toBeUndefined()
-      expect(userRepository.delete).toBeCalledTimes(1)
+      (repository.findOne as jest.Mock).mockReturnValue('valid-user')
+    
+      await expect(service.delete('valid-id')).resolves.toBeUndefined()
+      expect(repository.delete).toBeCalledWith('valid-id')
+      expect(repository.findOne).toBeCalledWith('valid-id')
+      expect(repository.delete('valid-id')).toBeUndefined()
     })
   })
 
@@ -222,18 +211,19 @@ describe('UsersService', () => {
     
     it('should return user if email exists', async () => {
 
-      (userRepository.findByEmail as jest.Mock).mockResolvedValue(users[0])
+      (repository.findByEmail as jest.Mock).mockResolvedValue({user: 'VALID-USER'})
 
-      const user = await service.findByEmail(users[0].email)
+      await expect(service.findByEmail('USER@EMAIL.COM')).resolves.toStrictEqual({user: 'VALID-USER'})
+      expect(repository.findByEmail).toBeCalledWith('USER@EMAIL.COM')
 
-      expect(user).toBe(users[0])
-      expect(userRepository.findByEmail).toBeCalledTimes(1)
     })
 
     it('should return null if email doesnt exist', async () => {
-      const user = await service.findByEmail(createUserMissingFields.email)
 
-      expect(user).toBeNull()
+      (repository.findByEmail as jest.Mock).mockReturnValue(null)
+
+      expect(await service.findByEmail('INVALID@EMAIL.COM')).toBeNull()
+      expect(repository.findByEmail).toBeCalledWith('INVALID@EMAIL.COM')
     })
   });
 });
