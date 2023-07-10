@@ -1,11 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { UsersService } from '../../src/modules/users/users.service';
-import { PrismaService } from '../../database/prisma.service';
 import { UserRepository } from '../../src/modules/users/repositories/users.repository';
 import { CreateUserDTO } from '../../src/modules/users/dto/create-user.dto';
 import { BadRequestException, ConflictException } from '@nestjs/common';
 import { User } from '../../src/modules/users/entities/user.entity';
 import { plainToInstance } from 'class-transformer';
+import { UpdateUserDTO } from '../../src/modules/users/dto/update-user.dto';
 
 describe('UsersService', () => {
   let service: UsersService;
@@ -13,6 +13,7 @@ describe('UsersService', () => {
   let users: User[]
   let createUserMissingFields: CreateUserDTO
   let createUserValidInfos: CreateUserDTO
+  let updateUser: UpdateUserDTO
 
   beforeEach(async () => {
 
@@ -27,7 +28,7 @@ describe('UsersService', () => {
         module: 'module 1'
       },
       {
-        id: '6a76df3e-2647-4d63-845f-77651206efc9',
+        id: '6a76df3e-2647-4d63-845f-77651206efc8',
         name: 'User2',
         email: 'email2@email.com',
         bio: 'Bio1',
@@ -53,6 +54,11 @@ describe('UsersService', () => {
       module: "Modulo 1"
     }
 
+    updateUser = {
+      name: 'update Name',
+      bio: 'new bio'
+    }
+
     const userRepositoryMock = {
       findByEmail: jest.fn().mockImplementation((email:string) => null),
       create: jest.fn().mockImplementation((userInfo) => {
@@ -70,11 +76,23 @@ describe('UsersService', () => {
         const user = users.find((user) => user.id === id)
 
         return user ? plainToInstance(User, user) : null
+      }),
+      update: jest.fn().mockImplementation((id: string, updateUserData: UpdateUserDTO) => {
+        const findUser = users.find(user => user.id === id);
+        Object.assign(findUser, updateUserData)
+
+        return plainToInstance(User, findUser)
+      }),
+      delete: jest.fn().mockImplementation((id: string) => {
+        const userIndex = users.findIndex((user) => user.id === id)
+
+        users.splice(userIndex, 1)
+        return
       })
     } 
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [UsersService, PrismaService, { provide: UserRepository, useFactory: () => userRepositoryMock }],
+      providers: [UsersService, { provide: UserRepository, useFactory: () => userRepositoryMock }],
     }).compile();
 
     service = module.get<UsersService>(UsersService);
@@ -135,11 +153,11 @@ describe('UsersService', () => {
 
     it('should throw BadRequestException if user not found', async () => {
 
-     await expect(service.findOne('222')).rejects.toThrow(
+     await expect(service.findOne('gj5')).rejects.toThrow(
       new BadRequestException('User not found')
      )
      expect(userRepository.findOne).toBeCalled()
-     expect(userRepository.findOne).toBeCalledWith('222')
+     expect(userRepository.findOne).toBeCalledWith('gj5')
     })
     
     it('should return a user if a valid id is passed as argument', async () => {
@@ -158,6 +176,64 @@ describe('UsersService', () => {
   })
 
   describe('Update User', () => {
-    
+    it('should throw BadRequestException if user id is invalid', async () => {
+
+      await expect(service.update('gj5', updateUser)).rejects.toThrow(
+        new BadRequestException('User not found')
+      )
+      expect(userRepository.findOne).toBeCalled()
+    })
+
+    it('should return user if id and updateUserInfo are valid', async () => {
+      const user = await service.update(users[1].id,updateUser)
+
+      expect(userRepository.findOne).toBeCalled()
+      expect(userRepository.update).toBeCalledWith(users[1].id, updateUser)
+      expect(user).toHaveProperty('id')
+      expect(user).toHaveProperty('name', updateUser.name)
+      expect(user).toHaveProperty('email')
+      expect(user).toHaveProperty('bio', updateUser.bio)
+      expect(user).toHaveProperty('contact')
+      expect(user).not.toHaveProperty('password')
+    })
   })
+
+  describe('Delete user', () => {
+
+    it('should throw BadRequestException if user not found', async () => {
+
+      await expect(service.delete('gj5')).rejects.toThrow(
+        new BadRequestException('User not found')
+      )
+      expect(userRepository.findOne).toBeCalled()
+    })
+
+    it('should delete user if id is valid', async () => {
+
+      const userToDelete = users[1]
+
+      await expect(service.delete(users[1].id)).resolves.toBeUndefined()
+      expect(users.find(user => user.id === userToDelete.id)).toBeUndefined()
+      expect(userRepository.delete).toBeCalledTimes(1)
+    })
+  })
+
+  describe('Retrieve user by email', () => {
+    
+    it('should return user if email exists', async () => {
+
+      (userRepository.findByEmail as jest.Mock).mockResolvedValue(users[0])
+
+      const user = await service.findByEmail(users[0].email)
+
+      expect(user).toBe(users[0])
+      expect(userRepository.findByEmail).toBeCalledTimes(1)
+    })
+
+    it('should return null if email doesnt exist', async () => {
+      const user = await service.findByEmail(createUserMissingFields.email)
+
+      expect(user).toBeNull()
+    })
+  });
 });
