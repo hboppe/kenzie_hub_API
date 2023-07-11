@@ -5,6 +5,7 @@ import { UserPrismaRepository } from "../../src/modules/users/repositories/prism
 import { InternalServerErrorException } from "@nestjs/common"
 import { CreateUserDTO } from '../../src/modules/users/dto/create-user.dto';
 import { User } from "../../src/modules/users/entities/user.entity"
+import { UpdateUserDTO } from "src/modules/users/dto/update-user.dto"
 
 describe('UserRepository', () => {
 
@@ -24,6 +25,16 @@ describe('UserRepository', () => {
 
   const hashingMock = {
     hashPassword: jest.fn()
+  }
+
+  const validUserReturnMock = {
+    id: '6a76df3e-2647-4d63-845f-77651206efc9',
+    name: 'User1',
+    email: 'email1@email.com',
+    bio: 'Bio1',
+    contact: '5406789078',
+    password: 'Senh@123',
+    module: 'module 1'
   }
 
   const createUserMock: CreateUserDTO = {
@@ -56,6 +67,20 @@ describe('UserRepository', () => {
     }
   ];
 
+  const updatedDataWithNoEmailOrPasswordMock: UpdateUserDTO = {
+    name: 'new-name',
+    bio: 'new-bio'
+  }
+
+  const updateUserWithPasswordMock = {
+    name: 'new name',
+    password: 'newPassword@123'
+  }
+
+  const hashedPassword = 'hashedPassword'
+
+  const userId = 'c16df54c-201a-11ee-be56-0242ac120002'
+
   beforeEach(async () => {
 
     const module: TestingModule = await Test.createTestingModule({
@@ -87,7 +112,6 @@ describe('UserRepository', () => {
 
   describe('create', () => {
 
-    const hashedPassword = 'hashedPassword'
     
     it('should throw if prisma throws', async () => {
       (prisma.user.create as jest.Mock).mockRejectedValue(
@@ -194,7 +218,6 @@ describe('UserRepository', () => {
 
   describe('findOne', () => {
 
-    const userId = 'c16df54c-201a-11ee-be56-0242ac120002'
 
     it('should throw if prisma throws', async () => {
 
@@ -257,14 +280,90 @@ describe('UserRepository', () => {
       })
     })
 
-    it('should returns when prisma return', async () => {
+    it('should returns if prisma return', async () => {
       prismaMock.user.findUnique.mockResolvedValue(expectedUsers[0])
 
       await expect(repository.findByEmail(email)).resolves.toEqual(expectedUsers[0])
       expect(prisma.user.findUnique).toBeCalledWith({
         where: {email}
       })
+      expect(prisma.user.findUnique).toReturn()
     })
 
+  })
+
+  describe('update', () => {
+    it('should throw if prisma throws', async () => {
+      prismaMock.user.update.mockRejectedValue(
+        new InternalServerErrorException()
+      )
+
+      await expect(repository.update(userId, updatedDataWithNoEmailOrPasswordMock)).rejects.toThrow(
+        new InternalServerErrorException()
+      )
+    })
+
+    it('should call prisma with valid parameters', async () => {
+
+      await repository.update(userId, updatedDataWithNoEmailOrPasswordMock)
+
+      expect(prisma.user.update).toBeCalledWith({
+        where: {id: userId},
+        data: {...updatedDataWithNoEmailOrPasswordMock}
+      })
+      expect(prisma.user.update).toBeCalledTimes(1)
+    })
+
+    it('should call hashing if password is informed', async () => {
+
+      const originalPassword = updateUserWithPasswordMock.password
+      hashingMock.hashPassword.mockReturnValue(hashedPassword)
+
+      await repository.update(userId, updateUserWithPasswordMock)
+      expect(hashing.hashPassword).toBeCalledWith(originalPassword, 10)
+    
+    })
+
+    it('should not call hashing if password is not informed', async () => {
+
+      await repository.update(userId, updatedDataWithNoEmailOrPasswordMock)
+      expect(hashing.hashPassword).not.toBeCalled()
+    
+    })
+
+    it('should return an instance of User', async () => {
+
+      hashingMock.hashPassword.mockReturnValue(hashedPassword)
+      prismaMock.user.update.mockReturnValue(validUserReturnMock)
+
+      await expect(repository.update(userId, updateUserWithPasswordMock)).resolves.toBeInstanceOf(User)
+    })
+
+    it('should not return user\'s password', async () => {
+      hashingMock.hashPassword.mockReturnValue(hashedPassword)
+      prismaMock.user.update.mockReturnValue(validUserReturnMock)
+
+      await expect(repository.update(userId, updateUserWithPasswordMock)).resolves.not.toHaveProperty('password')
+    })
+  })
+
+  describe('delete', () => {
+
+    it('should throw if prisma throws', async () => {
+      prismaMock.user.delete.mockRejectedValue(
+        new InternalServerErrorException()
+      )
+
+      await expect(repository.delete(userId)).rejects.toThrow(
+        new InternalServerErrorException()
+      )
+    })
+
+    it('should returns if prisma returns', async () => {
+      prismaMock.user.delete.mockResolvedValue(validUserReturnMock)
+
+      await repository.delete(userId)
+      expect(prisma.user.delete).toReturn()
+    })
   })
 })
