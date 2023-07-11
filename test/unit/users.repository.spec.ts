@@ -15,7 +15,10 @@ describe('UserRepository', () => {
   const prismaMock = {
     user: {
       create: jest.fn(),
-      findMany: jest.fn()
+      findMany: jest.fn(),
+      findUnique: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn()
     }
   }
 
@@ -31,6 +34,27 @@ describe('UserRepository', () => {
     contact: 'contact-test',
     module: 'module-test'
   }
+
+  const expectedUsers = [
+    {
+      id: '3416455a-2015-11ee-be56-0242ac120002',
+      name: 'name-test',
+      email: 'email@email.com',
+      password: 'password@123',
+      bio: 'bio-test',
+      contact: 'contact-test',
+      module: 'module-test'
+    },
+    {
+      id: '3416483e-2015-11ee-be56-0242ac120002',
+      name: 'name-test',
+      email: 'email2@email.com',
+      password: 'password@123',
+      bio: 'bio-test',
+      contact: 'contact-test',
+      module: 'module-test'
+    }
+  ];
 
   beforeEach(async () => {
 
@@ -62,8 +86,6 @@ describe('UserRepository', () => {
   })
 
   describe('Create', () => {
-
-
 
     const hashedPassword = 'hashedPassword'
     
@@ -139,26 +161,7 @@ describe('UserRepository', () => {
   });
 
   describe('FindAll', () => {
-    const expectedUsers = [
-      {
-        id: '3416455a-2015-11ee-be56-0242ac120002',
-        name: 'name-test',
-        email: 'email@email.com',
-        password: 'password@123',
-        bio: 'bio-test',
-        contact: 'contact-test',
-        module: 'module-test'
-      },
-      {
-        id: '3416483e-2015-11ee-be56-0242ac120002',
-        name: 'name-test',
-        email: 'email2@email.com',
-        password: 'password@123',
-        bio: 'bio-test',
-        contact: 'contact-test',
-        module: 'module-test'
-      }
-    ];
+
 
     it('should throw if prisma throws', async () => {
 
@@ -169,15 +172,6 @@ describe('UserRepository', () => {
       await expect(repository.findAll()).rejects.toThrow(
         new InternalServerErrorException()
       )
-    })
-
-    it('should return if prisma returns', async () => {
-
-
-      (prisma.user.findMany as jest.Mock).mockReturnValue(expectedUsers)
-
-      await expect(repository.findAll()).resolves.toBeDefined()
-      expect(prisma.user.findMany).toBeCalledTimes(1)
     })
 
     it('should return instances of User', async () => {
@@ -195,6 +189,47 @@ describe('UserRepository', () => {
       const result = await repository.findAll()
 
       expect(result[0]).not.toHaveProperty('password')
+    })
+  })
+
+  describe('FindOne', () => {
+
+    const userId = 'c16df54c-201a-11ee-be56-0242ac120002'
+
+    it('should throw if prisma throws', async () => {
+
+      prismaMock.user.findUnique.mockRejectedValue(
+        new InternalServerErrorException()
+      )
+
+      await expect(repository.findOne(createUserMock.email)).rejects.toThrow(
+        new InternalServerErrorException()
+      )
+      expect(prisma.user.findUnique).toBeCalledTimes(1)
+    })
+
+    it('should call prisma with the right params', async () => {
+
+      await repository.findOne(userId)
+
+      expect(prisma.user.findUnique).toBeCalledWith({
+        where: { id: userId }
+      })
+    })
+
+    it('should return an instance of User', async () => {
+      prismaMock.user.findUnique.mockResolvedValue(expectedUsers[0])
+
+      const result = await repository.findOne(userId)
+      expect(result).toBeInstanceOf(User)
+    })
+
+    it('should not include the user\'s password', async () =>{
+      prismaMock.user.findUnique.mockResolvedValue(expectedUsers[0])
+
+      const result = await repository.findOne(userId)
+      
+      expect(result).not.toHaveProperty('password')
     })
   })
 })
