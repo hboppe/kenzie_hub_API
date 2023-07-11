@@ -29,8 +29,14 @@ export class UsersService {
 
   async update(id: string, updatedData: UpdateUserDTO) {
 
-    const existingUser = await this.usersRepository.findOne(id)
+    let existingUser = await this.usersRepository.findOne(id)
     if(!existingUser) throw new BadRequestException('User not found')
+
+    if(updatedData.email){
+
+      existingUser = await this.usersRepository.findByEmail(updatedData.email)
+      if(existingUser) throw new ConflictException('Email already exists')
+    }
     
     return this.usersRepository.update(id, updatedData)
   }
