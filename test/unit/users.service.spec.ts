@@ -4,72 +4,96 @@ import { UserRepository } from '../../src/modules/users/repositories/users.repos
 import { CreateUserDTO } from '../../src/modules/users/dto/create-user.dto';
 import { BadRequestException, ConflictException, InternalServerErrorException } from '@nestjs/common';
 import { User } from '../../src/modules/users/entities/user.entity';
-import { plainToInstance } from 'class-transformer';
 import { UpdateUserDTO } from '../../src/modules/users/dto/update-user.dto';
 
 describe('UsersService', () => {
   let service: UsersService;
   let repository: UserRepository
-  let users: User[]
-  let invalidCreateUserMock: CreateUserDTO
-  let validCreateUserMock: CreateUserDTO
-  let updateUser: UpdateUserDTO
-  let invalidUserIdMock: string
+
+  const users = [
+    {
+      id: '6a76df3e-2647-4d63-845f-77651206efc9',
+      name: 'User1',
+      email: 'email1@email.com',
+      bio: 'Bio1',
+      contact: '5406789078',
+      password: 'Senh@123',
+      module: 'module 1'
+    },
+    {
+      id: '6a76df3e-2647-4d63-845f-77651206efc8',
+      name: 'User2',
+      email: 'email2@email.com',
+      bio: 'Bio1',
+      contact: '5406789079',
+      password: 'Senh@123',
+      module: 'module 2'
+    }
+  ]
+
+  const validUserReturnMock = {
+    id: '6a76df3e-2647-4d63-845f-77651206efc9',
+    name: 'User1',
+    email: 'email1@email.com',
+    bio: 'Bio1',
+    contact: '5406789078',
+    password: 'Senh@123',
+    module: 'module 1'
+  }
+
+  const invalidCreateUserMock = {
+    name: 'Hanna',
+    email: 'haha@email.com',
+    password: 'senha@E123',
+    bio: 'bio aqui'
+  } as CreateUserDTO
+
+  const validCreateUserMock = {
+    name: 'Hanna',
+    email: 'novoemail33dd@email.com',
+    password: 'senha@E123',
+    bio: 'bio aqui',
+    contact: "5404507083",
+    module: "Modulo 1"
+  }
+
+  const validUserId = 'c16df54c-201a-11ee-be56-0242ac120002'
+  const invalidUserId = 'c16df54c-201a-11ee-be56-0242ac120003'
+
+  const updateUser = {
+    name: 'update Name',
+    bio: 'updated bio'
+  }
+
+  const updateUserWithEmailMock = {
+    name: 'update Name',
+    bio: 'updated bio',
+    email: 'email@email.com'
+  }
+
+  const updateUserWithPasswordMock = {
+    name: 'update Name',
+    bio: 'updated bio',
+    password: 'updatedpassword@123'
+  }
+
+
+  const validEmail = 'valid@email.com'
+  const invalidEmail = 'invalid@email.com'
+
+  const invalidUserIdMock = 'bsdckjsvhjk22'
+
+  const userRepositoryMock = {
+    findByEmail: jest.fn(),
+    create: jest.fn(),
+    findAll: jest.fn(),
+    findOne: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn()
+  } 
+
 
   beforeEach(async () => {
-
-    users = [
-      {
-        id: '6a76df3e-2647-4d63-845f-77651206efc9',
-        name: 'User1',
-        email: 'email1@email.com',
-        bio: 'Bio1',
-        contact: '5406789078',
-        password: 'Senh@123',
-        module: 'module 1'
-      },
-      {
-        id: '6a76df3e-2647-4d63-845f-77651206efc8',
-        name: 'User2',
-        email: 'email2@email.com',
-        bio: 'Bio1',
-        contact: '5406789079',
-        password: 'Senh@123',
-        module: 'module 2'
-      }
-    ]
-
-    invalidCreateUserMock = {
-      name: 'Hanna',
-      email: 'haha@email.com',
-      password: 'senha@E123',
-      bio: 'bio aqui'
-    } as CreateUserDTO
-
-    validCreateUserMock = {
-      name: 'Hanna',
-      email: 'novoemail33dd@email.com',
-      password: 'senha@E123',
-      bio: 'bio aqui',
-      contact: "5404507083",
-      module: "Modulo 1"
-    }
-
-    updateUser = {
-      name: 'update Name',
-      bio: 'new bio'
-    }
-
-    invalidUserIdMock = 'bsdckjsvhjk22'
-
-    const userRepositoryMock = {
-      findByEmail: jest.fn(),
-      create: jest.fn(),
-      findAll: jest.fn(),
-      findOne: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn()
-    } 
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [UsersService, { provide: UserRepository, useFactory: () => userRepositoryMock }],
@@ -78,6 +102,10 @@ describe('UsersService', () => {
     service = module.get<UsersService>(UsersService);
     repository = module.get<UserRepository>(UserRepository)
   });
+
+  afterEach(() => {
+    jest.resetAllMocks()
+  })
 
   it('should be defined', async () => {
     expect(service).toBeDefined();
@@ -153,11 +181,10 @@ describe('UsersService', () => {
     
     it('should return if repository returns', async () => {
 
-      (repository.findOne as jest.Mock).mockReturnValue({user: 'VALID-USER'})
+      (repository.findOne as jest.Mock).mockReturnValue(validUserReturnMock)
 
-      expect(await service.findOne('valid-id')).toStrictEqual({user: 'VALID-USER'})
-      expect(repository.findOne).toBeCalledWith('valid-id')
-
+      await expect(service.findOne(validUserId)).resolves.toStrictEqual(validUserReturnMock)
+      expect(repository.findOne).toBeCalledWith(validUserId)
 
     })
   })
@@ -184,6 +211,19 @@ describe('UsersService', () => {
       expect(repository.update).toBeCalledWith('VALID-ID', updateUser)
 
     })
+
+    it('should throw ConflictException error if email informed already exists', async () => {
+      
+      (repository.findOne as jest.Mock).mockReturnValue(validUserReturnMock);
+      (repository.findByEmail as jest.Mock).mockReturnValue(validUserReturnMock);
+
+
+      await expect(service.update(validUserId, updateUserWithEmailMock)).rejects.toThrow(
+        new ConflictException('Email already exists')
+      )
+      expect(repository.findByEmail).toBeCalledTimes(1)
+    })
+
   })
 
   describe('Delete user', () => {
@@ -211,10 +251,10 @@ describe('UsersService', () => {
     
     it('should return user if email exists', async () => {
 
-      (repository.findByEmail as jest.Mock).mockResolvedValue({user: 'VALID-USER'})
+      (repository.findByEmail as jest.Mock).mockResolvedValue(users[0])
 
-      await expect(service.findByEmail('USER@EMAIL.COM')).resolves.toStrictEqual({user: 'VALID-USER'})
-      expect(repository.findByEmail).toBeCalledWith('USER@EMAIL.COM')
+      await expect(service.findByEmail(validEmail)).resolves.toStrictEqual(users[0])
+      expect(repository.findByEmail).toBeCalledWith(validEmail)
 
     })
 
@@ -222,8 +262,8 @@ describe('UsersService', () => {
 
       (repository.findByEmail as jest.Mock).mockReturnValue(null)
 
-      expect(await service.findByEmail('INVALID@EMAIL.COM')).toBeNull()
-      expect(repository.findByEmail).toBeCalledWith('INVALID@EMAIL.COM')
+      expect(await service.findByEmail(invalidEmail)).toBeNull()
+      expect(repository.findByEmail).toBeCalledWith(invalidEmail)
     })
   });
 });
