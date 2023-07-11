@@ -45,6 +45,11 @@ export class UserPrismaRepository implements UserRepository {
   }
 
   async update(id: string, updatedData: UpdateUserDTO): Promise<User> {
+ 
+    if(updatedData.password) {
+      updatedData.password = this.hashing.hashPassword(updatedData.password, 10)
+    }
+
     const user = await this.prisma.user.update({
       where: { id },
       data: { ...updatedData },
