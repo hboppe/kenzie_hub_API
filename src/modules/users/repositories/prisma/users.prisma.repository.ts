@@ -9,11 +9,11 @@ import { HashingService } from '../../hashing.service';
 
 @Injectable()
 export class UserPrismaRepository implements UserRepository {
-  constructor(private prisma: PrismaService, private hashingService: HashingService) {}
+  constructor(private prisma: PrismaService, private hashing: HashingService) {}
 
   async create(userData: CreateUserDTO): Promise<User> {
     const user = new User();
-    userData.password = this.hashingService.hashPassword(userData.password, 10);
+    userData.password = this.hashing.hashPassword(userData.password, 10);
     Object.assign(user, userData);
     const newUser = await this.prisma.user.create({
       data: {
