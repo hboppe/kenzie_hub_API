@@ -5,15 +5,15 @@ import { User } from '../../entities/user.entity';
 import { UserRepository } from '../users.repository';
 import { PrismaService } from '../../../../../database/prisma.service';
 import { plainToInstance } from 'class-transformer';
-import { hashSync } from 'bcryptjs';
+import { HashingService } from '../../hashing.service';
 
 @Injectable()
 export class UserPrismaRepository implements UserRepository {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private hashingService: HashingService) {}
 
   async create(userData: CreateUserDTO): Promise<User> {
     const user = new User();
-    userData.password = hashSync(userData.password, 10);
+    userData.password = this.hashingService.hashPassword(userData.password, 10);
     Object.assign(user, userData);
     const newUser = await this.prisma.user.create({
       data: {

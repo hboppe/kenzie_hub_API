@@ -4,6 +4,7 @@ import { UsersController } from './users.controller';
 import { UserRepository } from './repositories/users.repository';
 import { UserPrismaRepository } from './repositories/prisma/users.prisma.repository';
 import { PrismaService } from 'database/prisma.service';
+import { HashingService } from './hashing.service';
 
 @Module({
   controllers: [UsersController],
@@ -14,6 +15,7 @@ import { PrismaService } from 'database/prisma.service';
       provide: UserRepository,
       useClass: UserPrismaRepository
     },
+    HashingService
   ],
   exports: [UsersService]
 })
