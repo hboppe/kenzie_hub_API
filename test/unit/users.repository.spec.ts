@@ -85,7 +85,7 @@ describe('UserRepository', () => {
     expect(repository).toBeDefined
   })
 
-  describe('Create', () => {
+  describe('create', () => {
 
     const hashedPassword = 'hashedPassword'
     
@@ -160,7 +160,7 @@ describe('UserRepository', () => {
     })
   });
 
-  describe('FindAll', () => {
+  describe('findAll', () => {
 
 
     it('should throw if prisma throws', async () => {
@@ -192,7 +192,7 @@ describe('UserRepository', () => {
     })
   })
 
-  describe('FindOne', () => {
+  describe('findOne', () => {
 
     const userId = 'c16df54c-201a-11ee-be56-0242ac120002'
 
@@ -228,8 +228,43 @@ describe('UserRepository', () => {
       prismaMock.user.findUnique.mockResolvedValue(expectedUsers[0])
 
       const result = await repository.findOne(userId)
-      
+
       expect(result).not.toHaveProperty('password')
     })
+  })
+
+  describe('findByEmail', () => {
+
+    const email = 'email@email.com'
+    
+    it('should throw if prisma throws', async () => {
+      prismaMock.user.findUnique.mockRejectedValue(
+        new InternalServerErrorException()
+      )
+
+      await expect(repository.findByEmail(email)).rejects.toThrow(
+        new InternalServerErrorException()
+      )
+    })
+
+    it('should call prisma with valid parameters', async () => {
+      
+      await repository.findByEmail(email)
+
+      expect(prisma.user.findUnique).toBeCalledTimes(1)
+      expect(prisma.user.findUnique).toBeCalledWith({
+        where: {email}
+      })
+    })
+
+    it('should returns when prisma return', async () => {
+      prismaMock.user.findUnique.mockResolvedValue(expectedUsers[0])
+
+      await expect(repository.findByEmail(email)).resolves.toEqual(expectedUsers[0])
+      expect(prisma.user.findUnique).toBeCalledWith({
+        where: {email}
+      })
+    })
+
   })
 })
