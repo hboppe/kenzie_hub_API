@@ -4,96 +4,28 @@ import { UserRepository } from '../../src/modules/users/repositories/users.repos
 import { CreateUserDTO } from '../../src/modules/users/dto/create-user.dto';
 import { BadRequestException, ConflictException, InternalServerErrorException } from '@nestjs/common';
 import { createUserMock } from '../mocks/createUser.mock';
+import { retrieveUserMock } from '../mocks/retrieveUser.mock';
+import { updateUserMock } from '../mocks/updateUser.mock';
+import { destroyUserMock } from '../mocks/destroyUser.mock';
 
 
 describe('UsersService', () => {
   let service: UsersService;
   let repository: UserRepository
 
-  const users = [
-    {
-      id: '6a76df3e-2647-4d63-845f-77651206efc9',
-      name: 'User1',
-      email: 'email1@email.com',
-      bio: 'Bio1',
-      contact: '5406789078',
-      password: 'Senh@123',
-      module: 'module 1'
-    },
-    {
-      id: '6a76df3e-2647-4d63-845f-77651206efc8',
-      name: 'User2',
-      email: 'email2@email.com',
-      bio: 'Bio1',
-      contact: '5406789079',
-      password: 'Senh@123',
-      module: 'module 2'
-    }
-  ]
 
-  const validUserReturnMock = {
-    id: '6a76df3e-2647-4d63-845f-77651206efc9',
-    name: 'User1',
-    email: 'email1@email.com',
-    bio: 'Bio1',
-    contact: '5406789078',
-    password: 'Senh@123',
-    module: 'module 1'
-  }
-
-  const invalidCreateUserMock = {
-    name: 'Hanna',
-    email: 'haha@email.com',
-    password: 'senha@E123',
-    bio: 'bio aqui'
-  } as CreateUserDTO
-
-  const validCreateUserMock = {
-    name: 'Hanna',
-    email: 'novoemail33dd@email.com',
-    password: 'senha@E123',
-    bio: 'bio aqui',
-    contact: "5404507083",
-    module: "Modulo 1"
-  }
-
-  const validUserId = 'c16df54c-201a-11ee-be56-0242ac120002'
-  const invalidUserId = 'c16df54c-201a-11ee-be56-0242ac120003'
-
-  const updateUser = {
-    name: 'update Name',
-    bio: 'updated bio'
-  }
-
-  const updateUserWithEmailMock = {
-    name: 'update Name',
-    bio: 'updated bio',
-    email: 'email@email.com'
-  }
-
-  const updateUserWithPasswordMock = {
-    name: 'update Name',
-    bio: 'updated bio',
-    password: 'updatedpassword@123'
-  }
-
-
-  const validEmail = 'valid@email.com'
-  const invalidEmail = 'invalid@email.com'
-
-  const invalidUserIdMock = 'bsdckjsvhjk22'
-
-  const repositoryMock = {
-    findByEmail: jest.fn(),
-    create: jest.fn(),
-    findAll: jest.fn(),
-    findOne: jest.fn(),
-    update: jest.fn(),
-    delete: jest.fn()
-  } 
 
 
   beforeEach(async () => {
+
+    const repositoryMock = {
+      findByEmail: jest.fn(),
+      create: jest.fn(),
+      findAll: jest.fn(),
+      findOne: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn()
+    } 
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [UsersService, { provide: UserRepository, useFactory: () => repositoryMock }],
@@ -101,6 +33,8 @@ describe('UsersService', () => {
 
     service = module.get<UsersService>(UsersService);
     repository = module.get<UserRepository>(UserRepository)
+
+    
   });
 
   afterEach(() => {
@@ -134,13 +68,14 @@ describe('UsersService', () => {
 
     it('Success - Should return the data when repository returns data', async () => {
 
-      repositoryMock.create.mockReturnValue(createUserMock.createdUser)
+      (repository.create as jest.Mock).mockReturnValue(createUserMock.createdUser)
 
       await expect(service.create(createUserMock.validInfo)).resolves.toBe(createUserMock.createdUser)
 
     })
 
     it('Success - Should call repository with correct params', async () => {
+
       (repository.create as jest.Mock).mockReturnValue(createUserMock.createdUser)
 
       await service.create(createUserMock.validInfo)
@@ -153,122 +88,173 @@ describe('UsersService', () => {
 
   describe('Retrieve All users', () => {
 
-    it('Success - Should return the data if repository returns data', async () => {
-      (repository.findAll as jest.Mock).mockReturnValue(users)
-      const allUsers = await service.findAll()
-
-      expect(await service.findAll()).toBe(users)
-      expect(repository.findAll).toBeCalled()
-    })
-
     it('Error - Should throw if repository throws', async () => {
-
       (repository.findAll as jest.Mock).mockRejectedValue(
         new InternalServerErrorException()
       )
 
       expect(service.findAll()).rejects.toThrow()
     })
-    
+
+    it('Success - Should return the data if repository returns data', async () => {
+
+      (repository.findAll as jest.Mock).mockReturnValue(retrieveUserMock.allUsers)
+
+      expect(await service.findAll()).toBe(retrieveUserMock.allUsers)
+    })
+
+    it('Success - Should call repository with correct params', async () => {
+
+      await service.findAll()
+
+      expect(repository.findAll).toBeCalled()
+      expect(repository.findAll).toBeCalledWith()
+    })
   })
 
   describe('Retrieve one user by id', () => {
 
-    it('should throw BadRequestException if user not found', async () => {
+    it('Error - Should throw BadRequestException if user not found', async () => {
 
-      (repository.findOne as jest.Mock).mockReturnValue(null)
+      (repository.findAll as jest.Mock).mockReturnValue(null)
       
-      await expect(service.findOne(invalidUserIdMock)).rejects.toThrow(
+      await expect(service.findOne(retrieveUserMock.invalidId)).rejects.toThrow(
       new BadRequestException('User not found')
      )
-     expect(repository.findOne).toBeCalledWith(invalidUserIdMock)
     })
     
-    it('should return if repository returns', async () => {
+    it('Success - Should return the data if repository returns data', async () => {
 
-      (repository.findOne as jest.Mock).mockReturnValue(validUserReturnMock)
+      (repository.findOne as jest.Mock).mockReturnValue(retrieveUserMock.validUser)
 
-      await expect(service.findOne(validUserId)).resolves.toStrictEqual(validUserReturnMock)
-      expect(repository.findOne).toBeCalledWith(validUserId)
+      await expect(service.findOne(retrieveUserMock.validUser.id)).resolves.toStrictEqual(retrieveUserMock.validUser)
+    })
 
+    it('Success - Should call repository with correct params', async () => {
+      
+      (repository.findOne as jest.Mock).mockReturnValue(retrieveUserMock.validUser)
+
+      await service.findOne(retrieveUserMock.validUser.id)
+      expect(repository.findOne).toBeCalledTimes(1)
+      expect(repository.findOne).toBeCalledWith(retrieveUserMock.validUser.id)
     })
   })
 
   describe('Update User', () => {
 
-    it('should throw BadRequestException if user id is invalid', async () => {
+    it('Error - Should throw BadRequestException if user is not found', async () => {
 
       (repository.findOne as jest.Mock).mockReturnValue(null)
 
-      await expect(service.update(invalidUserIdMock, updateUser)).rejects.toThrow(
+      await expect(service.update(updateUserMock.invalidId, updateUserMock.validUpdate)).rejects.toThrow(
         new BadRequestException('User not found')
       )
-      expect(repository.findOne).toBeCalledWith(invalidUserIdMock)
     })
 
-    it('should return if repository return', async () => {
-      (repository.findOne as jest.Mock).mockReturnValue('VALID-ID');
+    it('Error - Should throw if repository throws', async () => {
 
-      (repository.update as jest.Mock).mockReturnValue({user: 'UPDATED-USER'})
+      (repository.findOne as jest.Mock).mockReturnValue(retrieveUserMock.validUser);
+      (repository.update as jest.Mock).mockRejectedValue(
+        new InternalServerErrorException()
+      )
 
-      await expect(service.update('VALID-ID', updateUser)).resolves.toStrictEqual({user: 'UPDATED-USER'})
-      expect(repository.findOne).toBeCalledWith('VALID-ID')
-      expect(repository.update).toBeCalledWith('VALID-ID', updateUser)
+      await expect(service.update(retrieveUserMock.validUser.id, updateUserMock.validUpdate)).rejects.toThrow()
 
     })
 
-    it('should throw ConflictException error if email informed already exists', async () => {
+    it('Error - Should throw ConflictException error if email informed already exists', async () => {
       
-      (repository.findOne as jest.Mock).mockReturnValue(validUserReturnMock);
-      (repository.findByEmail as jest.Mock).mockReturnValue(validUserReturnMock);
+      (repository.findOne as jest.Mock).mockReturnValue(retrieveUserMock.validUser);
+      (repository.findByEmail as jest.Mock).mockReturnValue(retrieveUserMock.validUser.email);
 
-
-      await expect(service.update(validUserId, updateUserWithEmailMock)).rejects.toThrow(
+      await expect(service.update(updateUserMock.validId, updateUserMock.duplicatedEmail)).rejects.toThrow(
         new ConflictException('Email already exists')
       )
-      expect(repository.findByEmail).toBeCalledTimes(1)
     })
 
+    it('Success - Should return the data if repository returns data', async () => {
+      (repository.findOne as jest.Mock).mockReturnValue(retrieveUserMock.validUser);
+      (repository.update as jest.Mock).mockReturnValue(updateUserMock.updatedUser)
+
+      await expect(service.update(updateUserMock.validId, updateUserMock.updatedUser)).resolves.toStrictEqual(updateUserMock.updatedUser)
+    })
+
+    it('Success - Should call repository with correct params', async () => {
+
+      (repository.findOne as jest.Mock).mockReturnValue(retrieveUserMock.validUser);
+      (repository.findByEmail as jest.Mock).mockReturnValue(null)
+
+      await service.update(updateUserMock.validId, updateUserMock.validUpdate)
+
+      expect(repository.findOne).toBeCalledWith(updateUserMock.validId)
+      expect(repository.findByEmail).toBeCalledWith(updateUserMock.validUpdate.email)
+    })
   })
 
   describe('Delete user', () => {
 
-    it('should throw BadRequestException if user not found', async () => {
+    it('Error - Should throw BadRequestException if user not found', async () => {
 
-      await expect(service.delete(invalidUserIdMock)).rejects.toThrow(
+      (repository.findOne as jest.Mock).mockReturnValue(null)
+
+      await expect(service.delete(updateUserMock.invalidId)).rejects.toThrow(
         new BadRequestException('User not found')
       )
-      expect(repository.findOne).toBeCalledWith(invalidUserIdMock)
     })
 
-    it('should returns if repository returns', async () => {
+    it('Error - Should throws if repository throw', async () => {
+      (repository.findOne as jest.Mock).mockReturnValue(destroyUserMock.validUser);
+      (repository.delete as jest.Mock).mockRejectedValue(
+        new InternalServerErrorException()
+      )
+
+      await expect(service.delete(destroyUserMock.invalidUser.id)).rejects.toThrow()
+    })
+
+    it('Success - Should returns if repository returns', async () => {
 
       (repository.findOne as jest.Mock).mockReturnValue('valid-user')
     
       await expect(service.delete('valid-id')).resolves.toBeUndefined()
-      expect(repository.delete).toBeCalledWith('valid-id')
-      expect(repository.findOne).toBeCalledWith('valid-id')
-      expect(repository.delete('valid-id')).toBeUndefined()
+      expect(repository.delete).toReturn()
+    })
+
+    it('Success - Should call repository with correct params', async () => {
+      (repository.findOne as jest.Mock).mockReturnValue(destroyUserMock.validUser)
+
+      await service.delete(destroyUserMock.validUser.id)
+
+      expect(repository.findOne).toBeCalledWith(destroyUserMock.validUser.id)
+      expect(repository.delete).toBeCalledWith(destroyUserMock.validUser.id)
     })
   })
 
   describe('Retrieve user by email', () => {
     
-    it('should return user if email exists', async () => {
+    it('Success - Should return user if email exists', async () => {
 
-      (repository.findByEmail as jest.Mock).mockResolvedValue(users[0])
+      (repository.findByEmail as jest.Mock).mockResolvedValue(retrieveUserMock.validUser)
 
-      await expect(service.findByEmail(validEmail)).resolves.toStrictEqual(users[0])
-      expect(repository.findByEmail).toBeCalledWith(validEmail)
+      await expect(service.findByEmail(retrieveUserMock.validUser.email)).resolves.toStrictEqual(retrieveUserMock.validUser)
+      expect(repository.findByEmail).toBeCalledWith(retrieveUserMock.validUser.email)
 
     })
 
-    it('should return null if email doesnt exist', async () => {
+    it('Success - Should return null if email doesnt exist', async () => {
 
       (repository.findByEmail as jest.Mock).mockReturnValue(null)
 
-      expect(await service.findByEmail(invalidEmail)).toBeNull()
-      expect(repository.findByEmail).toBeCalledWith(invalidEmail)
+      expect(await service.findByEmail(retrieveUserMock.invalidEmail)).toBeNull()
+      expect(repository.findByEmail).toBeCalledWith(retrieveUserMock.invalidEmail)
+    })
+
+    it('Success - Should call repository with correct params', async () => {
+
+      (repository.findByEmail as jest.Mock).mockReturnValue(retrieveUserMock.validUser)
+
+      await service.findByEmail(retrieveUserMock.validUser.email)
+
+      expect(repository.findByEmail).toBeCalledWith(retrieveUserMock.validUser.email)
     })
   });
 });
