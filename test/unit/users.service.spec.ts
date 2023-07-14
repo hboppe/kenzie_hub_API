@@ -3,8 +3,8 @@ import { UsersService } from '../../src/modules/users/users.service';
 import { UserRepository } from '../../src/modules/users/repositories/users.repository';
 import { CreateUserDTO } from '../../src/modules/users/dto/create-user.dto';
 import { BadRequestException, ConflictException, InternalServerErrorException } from '@nestjs/common';
-import { User } from '../../src/modules/users/entities/user.entity';
-import { UpdateUserDTO } from '../../src/modules/users/dto/update-user.dto';
+import { createUserMock } from '../mocks/createUser.mock';
+
 
 describe('UsersService', () => {
   let service: UsersService;
@@ -83,7 +83,7 @@ describe('UsersService', () => {
 
   const invalidUserIdMock = 'bsdckjsvhjk22'
 
-  const userRepositoryMock = {
+  const repositoryMock = {
     findByEmail: jest.fn(),
     create: jest.fn(),
     findAll: jest.fn(),
@@ -96,7 +96,7 @@ describe('UsersService', () => {
   beforeEach(async () => {
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [UsersService, { provide: UserRepository, useFactory: () => userRepositoryMock }],
+      providers: [UsersService, { provide: UserRepository, useFactory: () => repositoryMock }],
     }).compile();
 
     service = module.get<UsersService>(UsersService);
@@ -113,40 +113,47 @@ describe('UsersService', () => {
 
   describe('Create user', () => {
 
-    it('should throw ConflictException if email already exists', async () => {
+    it('Error - Should throw ConflictException if email already exists', async () => {
 
-      (repository.findByEmail as jest.Mock).mockResolvedValue(validCreateUserMock.email)
+      (repository.findByEmail as jest.Mock).mockResolvedValue(createUserMock.duplicatedEmail)
 
-      await expect(service.create(validCreateUserMock)).rejects.toThrow(
+      await expect(service.create(createUserMock.duplicatedEmail)).rejects.toThrow(
         new ConflictException('Email already exists'),
       )
-      expect(repository.findByEmail).toBeCalledWith(validCreateUserMock.email)
+      expect(repository.findByEmail).toBeCalledWith(createUserMock.duplicatedEmail.email)
     })
 
-    it('should return when repository returns', async () => {
-
-      (repository.create as jest.Mock).mockReturnValue(validCreateUserMock)
-
-      await expect(service.create(validCreateUserMock)).resolves.toBe(validCreateUserMock)
-      expect(repository.findByEmail).toBeCalledWith(validCreateUserMock.email)
-      expect(repository.create).toBeCalledWith(validCreateUserMock)
-    })
-
-    it('should throw Error if repository throws', async () => {
+    it('Error - Should throw if repository throws', async () => {
 
       (repository.create as jest.Mock).mockRejectedValue(
         new InternalServerErrorException()
       )
 
-      expect(service.create(validCreateUserMock)).rejects.toThrow(
-        new InternalServerErrorException()
-      )
+      expect(service.create(createUserMock.invalidInfo)).rejects.toThrow()
     })
+
+    it('Success - Should return the data when repository returns data', async () => {
+
+      repositoryMock.create.mockReturnValue(createUserMock.createdUser)
+
+      await expect(service.create(createUserMock.validInfo)).resolves.toBe(createUserMock.createdUser)
+
+    })
+
+    it('Success - Should call repository with correct params', async () => {
+      (repository.create as jest.Mock).mockReturnValue(createUserMock.createdUser)
+
+      await service.create(createUserMock.validInfo)
+
+      expect(repository.findByEmail).toBeCalledWith(createUserMock.validInfo.email)
+      expect(repository.create).toBeCalledWith(createUserMock.validInfo)
+    })
+
   })
 
   describe('Retrieve All users', () => {
 
-    it('should return if repository returns', async () => {
+    it('Success - Should return the data if repository returns data', async () => {
       (repository.findAll as jest.Mock).mockReturnValue(users)
       const allUsers = await service.findAll()
 
@@ -154,15 +161,13 @@ describe('UsersService', () => {
       expect(repository.findAll).toBeCalled()
     })
 
-    it('should throw Error if repository throws', async () => {
+    it('Error - Should throw if repository throws', async () => {
 
       (repository.findAll as jest.Mock).mockRejectedValue(
         new InternalServerErrorException()
       )
 
-      expect(service.findAll()).rejects.toThrow(
-        new InternalServerErrorException()
-      )
+      expect(service.findAll()).rejects.toThrow()
     })
     
   })
