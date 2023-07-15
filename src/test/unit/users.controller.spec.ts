@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { UsersController } from '../../src/modules/users/users.controller';
-import { UsersService } from '../../src/modules/users/users.service';
+import { UsersController } from '../../modules/users/users.controller';
+import { UsersService } from '../../modules/users/users.service';
 
 describe('UsersController', () => {
   let controller: UsersController;
@@ -16,10 +16,10 @@ describe('UsersController', () => {
       .useValue(mockUsersService)
       .compile();
 
-    controller = module.get<UsersController>(UsersController)
+    controller = module.get<UsersController>(UsersController);
   });
 
   it('should be ok', () => {
-    expect(controller).toBeDefined()
+    expect(controller).toBeDefined();
   });
 });

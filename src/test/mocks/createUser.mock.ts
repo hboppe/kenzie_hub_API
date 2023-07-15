@@ -30,5 +30,6 @@ export const createUserMock = {
     bio: 'Bio1',
     contact: '5406789078',
     module: 'module 1'
-  }
+  },
+  hashedPassword: 'hashedPassword'
 };
