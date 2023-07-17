@@ -1,7 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { UsersService } from '../../modules/users/users.service';
 import { UserRepository } from '../../modules/users/repositories/users.repository';
-import { CreateUserDTO } from '../../modules/users/dto/create-user.dto';
 import {
   BadRequestException,
   ConflictException,
