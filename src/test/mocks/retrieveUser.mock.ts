@@ -27,5 +27,6 @@ export const retrieveUserMock = {
     }
   ],
   invalidId: 'invalid-id',
-  invalidEmail: 'invalid@email.com'
+  invalidEmail: 'invalid@email.com',
+  validId: 'valid-id'
 }
