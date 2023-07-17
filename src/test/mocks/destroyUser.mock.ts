@@ -17,5 +17,6 @@ export const destroyUserMock = {
     contact: '5406789078',
     password: 'Senh@123',
     module: 'module 1'
-  }
+  },
+  invalidId: 'invalid_id'
 }
