@@ -9,6 +9,7 @@ This API was built utilizing the following technologies:
 - Nest.js
 - Jest
 - TypeScript
+- Prisma
 - class-validator
 - passport-jwt
 
